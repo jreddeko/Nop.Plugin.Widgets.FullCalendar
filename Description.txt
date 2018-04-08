@@ -1,0 +1,9 @@
+﻿Group: Widgets
+FriendlyName: Full Calendar with Google Calendar Integration
+SystemName: Widgets.FullCalendar
+Version: 1.00
+SupportedVersions: 3.90
+Author: Jason Reddekopp
+DisplayOrder: 0
+FileName: Nop.Plugin.Widgets.FullCalendar.dll
+Description: This plugin displays a calendar from Google Calendar on your site.

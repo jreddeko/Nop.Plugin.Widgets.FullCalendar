@@ -1,0 +1,210 @@
+﻿@using Nop.Web.Framework.UI
+@model Nop.Plugin.Widgets.FullCalendar.Models.AppointmentModel
+@{
+    Layout = "";
+    Html.AddScriptParts("~/Plugins/Widgets.FullCalendar/Scripts/moment.min.js");
+    Html.AddScriptParts("~/Plugins/Widgets.FullCalendar/Scripts/bootstrap.min.js");
+    Html.AddScriptParts("~/Plugins/Widgets.FullCalendar/Scripts/winmarkltd-BootstrapFormHelpers-d4201db/bootstrap-formhelpers.min.js");
+    Html.AddScriptParts("~/Plugins/Widgets.FullCalendar/Scripts/winmarkltd-BootstrapFormHelpers-d4201db/bootstrap-formhelpers-phone.js");
+    Html.AddScriptParts("~/Plugins/Widgets.FullCalendar/Scripts/fullcalendar/fullcalendar.min.js");
+    Html.AddScriptParts("~/Plugins/Widgets.FullCalendar/Scripts/fullcalendar/gcal.min.js");
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
+    Html.AddCssFileParts("~/Plugins/Widgets.FullCalendar/Content/bootstrap.min.css", true);
+    Html.AddCssFileParts("~/Plugins/Widgets.FullCalendar/Content/fullcalendar/fullcalendar.min.css");
+    Html.AddCssFileParts("~/Plugins/Widgets.FullCalendar/Content/fontAwesome/css/font-awesome-4.6.3.min.css");
+    Html.AddCssFileParts("~/Plugins/Widgets.FullCalendar/Content/winmarkltd-BootstrapFormHelpers-d4201db/bootstrap-formhelpers.min.css");
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css" rel="stylesheet" />
+    <style>
+        .fc-toolbar.fc-header-toolbar {
+            padding: 10px;
+        }
+
+        .calendar {
+            background-color: white;
+        }
+    </style>
+    <script>
+        $(function () {
+            // mvc FullCalendarIndexModel to json
+            const model = @Html.Raw(Json.Encode(Model));
+            $("#new-appointment-modal").appendTo("body");
+
+            // get start and end times
+            const startTime = moment('@Model.StartTime.ToString()', ['hh:mm:ss']);
+            const endTime = moment('@Model.EndTime.ToString()', ['hh:mm:ss']);
+
+            // function for difference between arrays
+            Array.prototype.diff = function(a) {
+                return this.filter(function(i) {
+                    return a.indexOf(i) < 0;
+                });
+            };
+
+            // get days where day of week is disabled
+            const daysOfWeekDisabled = [0, 1, 2, 3, 4, 5, 6].diff(model.DaysOfWeekEnabled);
+
+            $('#appointment-datetimepicker').datetimepicker({
+                daysOfWeekDisabled: daysOfWeekDisabled,
+                stepping: 30,
+                useCurrent: true,
+                disabledTimeIntervals: getDisabledTimeIntervals(new Date(), startTime, endTime),
+                inline: true,
+                sideBySide: true,
+                minDate: new Date(),
+            });
+
+            function arrayDiff(a, b) {
+                return a.filter(
+                    function(el) {
+                        return b.indexOf(el) < 0;
+                    }
+                );
+            }
+
+            // calculates time intervals to disable calendar
+            function getDisabledTimeIntervals(currDate, startTime, endTime) {
+                const z1 = moment(currDate).set({
+                    'hour': 0,
+                    'minute': 0,
+                    'second': 0
+                }).toDate();
+                const z2 = moment(currDate).set({
+                    'hour': 24,
+                    'minute': 0,
+                    'second': 0
+                }).toDate();
+                const st = moment(currDate).set({
+                    'hour': startTime.hour(),
+                    'minute': startTime.minute(),
+                    'second': 0
+                }).toDate();
+                const et = moment(currDate).set({
+                    'hour': endTime.hour(),
+                    'minute': endTime.minute(),
+                    'second': 0
+                }).toDate();
+
+                var arr = []
+                if (et <= st) {
+                    arr.push([et, st]);
+                } else {
+                    arr.push([z1, st]);
+                    arr.push([et, z2]);
+                }
+                return arr;
+            }
+
+            $(document).on('dp.change', function(e) {
+                const d = e.date.toDate();
+                const arr = getDisabledTimeIntervals(d, startTime, endTime);
+                $('#appointment-datetimepicker')
+                    .data('DateTimePicker')
+                    .disabledTimeIntervals(arr);
+            })
+            // fullcalendar api key
+            const apiKey = model.PublicApiKey;
+
+            // list of google calendars
+            const eventSources = [{
+                googleCalendarId: model.CalendarId,
+                className: model.ClassName
+            }];
+
+            // http://fullcalendar.io/docs/google_calendar/
+            $('#calendar').fullCalendar({
+                height: 600,
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'newAppointment'
+                },
+                customButtons: {
+                    newAppointment: {
+                        text: 'Request Appointment',
+                        click: function() {
+                            $("#new-appointment-modal").modal('toggle')
+                        }
+                    },
+                },
+
+                defaultView:'agendaWeek',
+                weekNumbers: true,
+                navLinks: true, // can click day/week names to navigate views
+
+                eventRender: function(event, element) {
+                    element.bind('dblclick', function() {
+                        alert('double click!');
+                    });
+                },
+                // http://fullcalendar.io/docs/google_calendar/
+                googleCalendarApiKey: apiKey,
+                eventSources: eventSources,
+            });
+
+            $('#calendar').fullCalendar('option', 'themeSystem', "bootstrap3");
+        });
+    </script>
+}
+<div class="product-grid">
+    <div class="title">
+        <strong>@T("Plugins.Widgets.FullCalendar.Title")</strong>
+    </div>
+    <div class="calendar">
+        <div id='calendar'></div>
+    </div>
+    <!-- Modal -->
+    <div class="modal fade" id="new-appointment-modal" tabindex="-1" role="dialog" aria-labelledby="new-appointment-modalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            @using (Html.BeginForm())
+            {
+                @Html.HiddenFor(model => model.PublicApiKey)
+                @Html.HiddenFor(model => model.CalendarId)
+                @Html.HiddenFor(model => model.ClassName)
+                @Html.HiddenFor(model => model.ContactName)
+                @Html.HiddenFor(model => model.WidgetZone)
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">
+                            @T("Plugins.Widgets.FullCalendar.Form.Title")
+                        </h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="calendar">
+                            @Html.LabelFor(model => model.ContactName)
+                            <div class="form-group">
+                                @Html.TextBoxFor(model => model.ContactName, new { @class = "form-control input-medium", disabled = "disabled" })
+                            </div>
+                            @Html.LabelFor(model => model.ContactNumber)
+                            <div class="form-group">
+                                @Html.TextBoxFor(model => model.ContactNumber, new { @class = "form-control input-medium bfh-phone", data_format = "+1 (ddd) ddd-dddd" })
+                                @Html.ValidationMessageFor(model => model.ContactNumber)
+                                <div>
+                                    <small id="phoneHelp" class="form-text text-muted">@T("Plugins.Widgets.FullCalendar.Form.PhoneHelperTex")</small>
+                                </div>
+                            </div>
+
+                            @Html.LabelFor(model => model.AppointmentDate)
+                            <div class="form-group">
+                                <div id='appointment-datetimepicker'>
+                                    @Html.TextBoxFor(model => model.AppointmentDate, new { @class = "form-control hidden", onkeydown = "return false" })
+                                    @Html.ValidationMessageFor(model => model.AppointmentDate)
+                                </div>
+                            </div>
+
+                            @Html.LabelFor(model => model.AppointmentReason)
+                            <div class="form-group">
+                                @Html.TextAreaFor(model => model.AppointmentReason, new { @class = "form-control", rows = "5" })
+                                @Html.ValidationMessageFor(model => model.AppointmentReason)
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">@T("Admin.Common.Cancel")</button>
+                            <button type="submit" class="btn btn-primary">@T("Admin.Common.Save")</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
